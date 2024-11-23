@@ -9,14 +9,14 @@
 #define SET   1
 #define RESET 0
 
+const char* help_menu = "\n=================================COMANDOS===================================\n"
+                        "\n///INSERTAR EL COMANDO CON LA SIGUIENTE ESTRUCTURA QUE SE ENCUENTRA ABAJO///\n"
+                        "\n///               Y TERMINARLA CON EL SIGUIENTE CARACTER @               ///\n"
+                        "\n///             1)  step_motor #steps #dir --> 1 CW, 0 CCW               ///\n" // Anti horario es con pasos negativos
+                        "\n///             2)  start_measurements                                   ///\n";
+
+
 // Mensajes a mandar
-
-char* help_menu = "\n=========================MENU_COMMANDS=========================\n"
-                  "\n///INSERT THE COMMAND YOU WANT BELOW FOLLOWING THE STRUCTURE///\n"
-                  "\n///               AND ENDING IT WITH @                      ///\n"
-                  "\n          1)  step_motor #steps #dir --> 1 CW, 0 CCW        ///\n" // Anti horario es con pasos negativos
-                  "\n          2)  start_measure                                 ///\n";
-
 int IN1 = 19;
 int IN2 = 18;
 int IN3 = 5;
@@ -24,8 +24,10 @@ int IN4 = 17;
 
 // Cantidad de pasos por rev
 const int stepsPerRevolution = 2048;
+
 BH1750 lightMeter;
 float lux;
+
 int16_t steps = 0;
 char c;
 
@@ -33,28 +35,41 @@ char c;
 String bufferreception;
 bool flag_start_measure = 0;
 
+int pasos_a_dar = 0;
+bool direccion = RESET;
+
+//banderas varias
+bool flag_step_motor = RESET;
+bool received_by_python = RESET;
+
+void readDatatoSend(void);
+void do_measurements (void);
+
 
  // Creamos la clase stepper y un objeto llamado motor
 Stepper motor(stepsPerRevolution, IN1,IN3,IN2,IN4);
 
 // initialize the stepper library
 void setup() {
-    // set the speed at 5 rpm
-    motor.setSpeed(5);
-    // initialize the serial port
-    Serial.begin(9600);
+  // initialize the serial port
+  Serial.begin(115200);
+  // set the speed at 5 rpm
+  motor.setSpeed(3);
+
+    
     // Initiacializa el bus I2C (la librer ́ıa BH1750 no lo hace automáticamente)
-   while (!Wire.begin()){Serial.print("::"); delay(500);}
+  
+   while (!Wire.begin()){}
 
    lightMeter.begin(BH1750::CONTINUOUS_HIGH_RES_MODE_2);
     
-   while (!lightMeter.begin()) {
-      Serial.print(":");
-      delay(500);
-   }
+   while (!lightMeter.begin()) {}
+   
   // Si llego hasta aca es porque ya se logro inicializar la comunicacion serial.
-    Serial.println("BH1750 inicializado");
-    delay(1000);
+  delay(3000);
+
+  Serial.print(">> SISTEMA INICIALIZADO\n");
+
 
   // Despues de inicializar todo imprimimos el menu de instrucciones
 }
@@ -63,18 +78,29 @@ void loop() {
 
   // En esta parte leeremos la comunicacion serial que se envia desde python
 
-    readDatatoSend();
+  readDatatoSend();
 
 
   // En esta seccion se analizara que funcion dependiendo del comando tomado se ejecutará
-
+  
   if (flag_start_measure){
-    
-    while (flag_start_measure){}
-      do_measurements();
-    }  
-  }
+    while (flag_start_measure){do_measurements();delay(500);}
 
+    std::cout << "\nFin del comando... start_measurements\n" << "--||--\n";
+    received_by_python = RESET;
+
+  }else if (flag_step_motor){
+    if (direccion == 1){
+      motor.step(pasos_a_dar);
+    }else{
+      motor.step((-1) * pasos_a_dar);
+    }
+    flag_step_motor = RESET;
+    std::cout << "\nFin del comando... step_motor\n";
+    std::cout << help_menu << "--||--\n" << std::endl;
+    received_by_python = RESET;
+  }  
+  
   delay(500);
 }
 
@@ -98,16 +124,46 @@ void processCommand(const std::string& command) {
     if (task == "step_motor") {
       // Si llegamos aqui es porque simplemente queremos mover el motor cierta cantidad de pasos 
       // en sentido horario o sentido antihorario
-        std::cout << task << std::endl; 
-    } else if (task == "start_measure") {
-      // Si llegamos aqui es porque simplemente queremos mover el motor cierta cantidad de pasos 
-      // en sentido horario o sentido antihorario
-        std::cout << task << std::endl; 
-    } else {
-        std::cout << "Unknown task." << std::endl;
-    }
-}
+        flag_step_motor = SET; 
+        pasos_a_dar = numbers[0]; 
+        direccion = numbers[1];
 
+        std::cout << "\nComando procesado..."<< task << "\n" ;
+        std::cout << "Pasos a dar: " << pasos_a_dar << "\n";
+        if(direccion == 1){
+          std::cout << "Dirección: " << "Horario\n"<< "\n--||--\n"  <<std::endl;
+        }else{
+          std::cout << "Dirección: " << "Anti Horario\n" << "\n--||--\n"<< std::endl; 
+        }
+        bufferreception = "";
+        while (!received_by_python){readDatatoSend();delay(500);}
+    }else if (task == "start_measurements") {
+
+      // Aqui se ejecutara la rutina para hacer la medicion en tiempo real y la graficacion de los datos.
+      std::cout << "\nComando procesado..."<< task << "\n" ;
+      std::cout << "||||MODO DE LECTURA CONTINUA ACTIVADO|||||"<< "--||--\n"  << std::endl;
+      flag_start_measure = SET; 
+      bufferreception = "";
+      while (!received_by_python){readDatatoSend();delay(500);}
+
+
+    }else if (task == "INICIO") {
+      // Este es el comando de inicializacion, con esto podemos saber que la comunicacion serial se realizo correctamente y que el
+      // Python y el ESP32 estan conectados correctamente. Se enviara el menu de opciones.
+      std::cout << help_menu << std::endl; 
+      bufferreception = "";
+    }else if (task == "RECIBIDO_step_motor" || task == "RECIBIDO_start_measurements"){
+        if (task == "RECIBIDO_step_motor") {received_by_python = SET;}
+        
+        else if (task == "RECIBIDO_start_measurements"){received_by_python = SET;}
+
+        bufferreception = "";
+    }else {
+        std::cout << "\nTarea desconocida...Corrija su comando\n" << "--||--\n" << std::endl;
+        bufferreception = "";
+    }
+
+}
 
 void readDatatoSend(void){
 
@@ -132,17 +188,16 @@ void readDatatoSend(void){
 void do_measurements (void){
 
   // En esta funcion se realizará las mediciones del fotodetector mientras corremos el motor cada 10 pasos
-   motor.step(-10);
-    lux = lightMeter.readLightLevel();
-    Serial.print(lux);
-    Serial.print(" ");
-    Serial.println(steps);
-    steps = steps + 10;
-    if (steps == 990) {
-      motor.step(990);
-
-      steps = 0;
-      flag_start_measure = RESET;
-      delay(10000);
-    }
+  motor.step(-10);
+  lux = lightMeter.readLightLevel();
+  Serial.print(lux);
+  Serial.print(" ");
+  Serial.println(steps);
+  steps = steps + 10;
+  if (steps == 990) {
+    std::cout << "\nTERMINADO\n"  << std::endl;
+    motor.step(990);
+    steps = 0;
+    flag_start_measure = RESET;
+  }
 }
