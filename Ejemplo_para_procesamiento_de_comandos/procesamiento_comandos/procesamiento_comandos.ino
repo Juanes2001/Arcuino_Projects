@@ -7,15 +7,15 @@ String help_menu = "\n=================================COMANDOS=================
                    "///               Y TERMINARLA CON EL SIGUIENTE CARACTER @               ///\n"
                    "///             1)  led #1-> ON, 0-> OFF                                 ///\n"
                    "///             2)  message msg                                          ///\n"
-                   "///             3)  set_pwm  #0->255                                     ///\n||";
+                   "///             3)  set_pwm  #0->255                                     ///\n";
 
-int pin_led = LED_BUILTIN;
+int pin_led = 12;
 int pin_analog = 11;
 
 
 
 // Variables para comandos 
-String bufferreception;
+String bufferreception = "";
 
 void readDatatoSend(void);
 void processCommand(String command);
@@ -24,15 +24,13 @@ void processCommand(String command);
 // initialize the stepper library
 void setup(){
   // initialize the serial port
-  Serial.begin(9600);
+  Serial.begin(115200);
 
   Serial.print(help_menu);  
 
   delay(3000);
 
 
-  pinMode(pin_led, OUTPUT);
-  pinMode(pin_analog, OUTPUT);
 
   // Despues de inicializar todo imprimimos el menu de instrucciones
 }
@@ -48,8 +46,6 @@ void loop(){
 // Function to process the command
 void processCommand(String input) {
 
-    //Serial.print(input);
-
     String task = "";
     String Sparam1 = "";
     int param1 = 0;
@@ -64,30 +60,23 @@ void processCommand(String input) {
       task = input.substring(0,space_index);
       Sparam1 = input.substring(space_index + 1);
 
-      //Serial.print(task);
-      //Serial.print(Sparam1);
-      
-      if (task == "message"){
-         Serial.print("Message received: Arduino Speaking: ");
-         Serial.print(Sparam1);
-         Serial.print("\n");
+      space_index = Sparam1.indexOf(' ');
+
+      if (space_index == -1){
+
       }else{
-        space_index = Sparam1.indexOf(' ');
-
-        if (space_index == -1){
-          param1 = Sparam1.toInt();
-
-        }else{
-          param1 = Sparam1.substring(0,space_index).toInt();
-          param2 = Sparam1.substring(space_index+1).toInt();
-        }
+        param1 = Sparam1.substring(0,space_index).toInt();
+        param2 = Sparam1.substring(space_index+1).toInt();
       }
 
     }
-    //Serial.print(task);
-    //Serial.print(param1);
-    // Process based on task
-    if (task == "led") {
+    
+    if (task == "message"){
+         Serial.print("Message received: Arduino Speaking: ");
+         Serial.print(Sparam1);
+         Serial.print("\n");
+      
+    }else if (task == "led") {
 
       if (param1 == 1){
         digitalWrite(pin_led, HIGH);
@@ -100,23 +89,22 @@ void processCommand(String input) {
     }else if (task == "set_pwm"){
       analogWrite(pin_analog, param1);
       Serial.print("Dutty changed\n");
-    }else {
+    }else{
         Serial.println("Non a command");
     }
-
+    bufferreception = "";
 }
 
 void readDatatoSend(void){
-  String c = "";
- while (Serial.available()){ 
+  while (Serial.available()){ 
 
-    c = Serial.readString();
+    bufferreception += Serial.readString();
 
-    if (c.indexOf('@') == -1){
+    if (bufferreception.indexOf('@') == -1){
 
     }else{
-      c.replace("@","");
-      processCommand(c); 
+      bufferreception.replace("@","");
+      processCommand(bufferreception); 
     } 
     // Procesamos el comando ingresado
     //Serial.print(c);
