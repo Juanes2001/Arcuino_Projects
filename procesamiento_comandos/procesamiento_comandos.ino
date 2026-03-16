@@ -8,12 +8,12 @@ String help_menu = "\n=================================COMANDOS=================
                    "///                           1)  Do_sweep                               ///\n";
 
 
-const int analogPinA0 = A0;
-const int analogPinA1 = A1; 
+const int analogPin_base = A0;
+const int analogPin_colector = A1; 
 const int sampleDelay = 20; 
 const int time_waiting = 100;
-const uint8_t pin_signal1 = 3;
-const uint8_t pin_signal2 = 5;
+const uint8_t pin_signal_base = 3;
+const uint8_t pin_signal_colector = 5;
 
 uint8_t val = 0;
 uint8_t wait = 0;
@@ -24,8 +24,12 @@ double Base_current = 0 ;
 float Voltage_CE_avg = 0;
 double colector_Current = 0; 
 
-const long 1M_res = 994000;
+const long 1M_res = 948000;
 const int 220_res = 214;
+
+const float max_volt = 3.3 // Maximo posible por medición del ADC
+const int max_dutty = 180
+
 
 
 
@@ -36,6 +40,7 @@ String bufferreception = "";
 
 void readDatatoSend(void);
 void processCommand(String command);
+void Do_sweep(void);
 
 
 // initialize the stepper library
@@ -52,8 +57,6 @@ void setup(){
   
   analogReference(EXTERNAL);
 
-
-
   // Despues de inicializar todo imprimimos el menu de instrucciones
 }
 
@@ -64,30 +67,6 @@ void loop(){
 
 }
 
-// Esta opción permite crear un mini osciloscopio usando la interfaz del computador.
-/*void Osciloscope (void){
-
-  for (int i = 0; i < 400; i++) { 
-    
-    int value = analogRead(analogPin); 
-    
-    // Convert to voltage 
-    
-    float voltage = value * (5.0 / 1023.0); 
-    
-    Serial.println(voltage); 
-
-    Serial.print(voltage);
-    Serial.print(" ");
-    Serial.print(0);    // lower limit
-    Serial.print(" ");
-    Serial.println(5);  // upper limit
-
-    
-    delayMicroseconds(sampleDelay); 
-  } 
-
-}*/
 
 // Function to process the command
 void processCommand(String input) {
@@ -137,57 +116,11 @@ void processCommand(String input) {
         
         */
 
-        for (uint8_t val_sig_3 = 0 /*Recordar cambiar a un valor en donde a partir del dutty siguiente, cambie en el OPAM*/; val_sig_3 <255; val_sig_3 += 255/5){
-
-            // Primera medicion, medimos la corriente de base
-
-            for (int i = 0; i < 100; i++) {
-              sum += analogRead(analogPinA0) * (3.3/1023);   // read ADC and accumulate
-            }
-
-            Volt_base_avg = sum / 100;
-
-            Base_current = ((5.0 * val_sig_3/255) - (Volt_base_avg))/1M_res
-
-            for (uint8_t val_sig_5 = 0; val_sig_5 <255; val_sig_5++){
-                
-                sum = 0;
-
-                // Primera medicion, medimos la corriente de base
-
-                for (int i = 0; i < 100; i++) {
-                  sum += analogRead(analogPinA1) * (3.3/1023);   // read ADC and accumulate
-                }
-
-                Voltage_CE_avg = sum / 100;
-
-                colector_Current = ((5.0 * val_sig_5/255) - (Voltage_CE_avg))/220_res
-
-                pair = [Base_current,Voltage_CE_avg,colector_Current]
-
-                Serial.println(pair);
-          
-        }
-
-
-        }
+        Do_sweep();
 
 
 
     }
-    
-    
-    /*else if (task == "Osciloscope"){
-      if (param1 == 1){
-        flag_osci = SET;
-        while(flag_osci){
-          Osciloscope();
-          readDatatoSend();  
-        }
-      }else{
-        flag_osci = RESET;
-      }
-    }*/
     
     
     
@@ -212,4 +145,52 @@ void readDatatoSend(void){
     //Serial.print(c);
     //processCommand(c);   
   }// Fin del while  
+}
+
+
+void Do_sweep(void){
+
+    for (uint8_t val_sig_base = 0 /*Recordar cambiar a un valor en donde a partir del dutty siguiente, cambie en el OPAM*/; val_sig_base <max_dutty; val_sig_base += 200/5){
+
+            // Primera medicion, medimos la corriente de base
+
+            for (int i = 0; i < 100; i++) {
+              sum += analogRead(analogPin_base) * (3.3/1023);   // read ADC and accumulate
+            }
+
+            Volt_base_avg = sum / 100;
+
+            Base_current = ((5.0 * val_sig_base/255) - (Volt_base_avg))*1000000/1M_res // uA
+
+            for (uint8_t val_sig_colector = 0; val_sig_colector < max_dutty; val_sig_colector++){
+                
+                sum = 0;
+
+                // Primera medicion, medimos la corriente de base
+
+                for (int i = 0; i < 100; i++) {
+                  sum += analogRead(analogPin_colector) * (3.3/1023);   // read ADC and accumulate
+                }
+
+                Voltage_CE_avg = sum / 100;
+
+                colector_Current = ((5.0 * val_sig_colector/255) - (Voltage_CE_avg))*1000/220_res //mA
+
+                Serial.print(Base_current); //uA
+                Serial.print(" ");
+                Serial.print(Voltage_CE_avg); //V
+                Serial.print(" ");
+                Serial.print(colector_Current); //mA
+                Serial.print("||"); //mA
+                if (val_sig_colector == max_dutty){
+                  Serial.print("@");  
+                }
+          
+            }
+
+
+        }
+
+
+
 }
