@@ -2,11 +2,10 @@
 #define SET   1
 #define RESET 0
 
-String help_menu = "\n=================================COMANDOS===================================\n"
-                   "///INSERTAR EL COMANDO CON LA SIGUIENTE ESTRUCTURA QUE SE ENCUENTRA ABAJO///\n"
-                   "///               Y TERMINARLA CON EL SIGUIENTE CARACTER @               ///\n"
+/*String help_menu = "\n=================================COMANDOS===================================\n"
+                   "///HAZ CLICK EN EL BOTON CON EL NOMBRE DEL COMANDO PARA MANDAR LA ORDEN CON LA SIGUIENTE ESTRUCTURA QUE SE ENCUENTRA ABAJO///\n"
                    "///                           1)  Do_sweep                               ///\n";
-
+*/
 
 const int analogPin_base = A0;
 const int analogPin_colector = A1; 
@@ -24,11 +23,11 @@ double Base_current = 0 ;
 float Voltage_CE_avg = 0;
 double colector_Current = 0; 
 
-const long 1M_res = 948000;
-const int 220_res = 214;
+const long _1M_res = 948000;
+const int _220_res = 214;
 
-const float max_volt = 3.3 // Maximo posible por medición del ADC
-const int max_dutty = 180
+const float max_volt = 3.3; // Maximo posible por medición del ADC
+const int max_dutty = 180;
 
 
 
@@ -48,12 +47,12 @@ void setup(){
   // initialize the serial port
   Serial.begin(115200);
 
-  Serial.print(help_menu);  
+  //Serial.print(help_menu);  
 
   delay(3000);
 
-  pinMode(pin_signal1,OUTPUT);
-  pinMode(pin_signal2,OUTPUT);
+  pinMode(pin_signal_base,OUTPUT);
+  pinMode(pin_signal_colector,OUTPUT);
   
   analogReference(EXTERNAL);
 
@@ -160,7 +159,7 @@ void Do_sweep(void){
 
             Volt_base_avg = sum / 100;
 
-            Base_current = ((5.0 * val_sig_base/255) - (Volt_base_avg))*1000000/1M_res // uA
+            Base_current = ((5.0 * val_sig_base/255) - (Volt_base_avg))*1000000/_1M_res; // uA
 
             for (uint8_t val_sig_colector = 0; val_sig_colector < max_dutty; val_sig_colector++){
                 
@@ -174,7 +173,7 @@ void Do_sweep(void){
 
                 Voltage_CE_avg = sum / 100;
 
-                colector_Current = ((5.0 * val_sig_colector/255) - (Voltage_CE_avg))*1000/220_res //mA
+                colector_Current = ((5.0 * val_sig_colector/255) - (Voltage_CE_avg))*1000/_220_res; //mA
 
                 Serial.print(Base_current); //uA
                 Serial.print(" ");
