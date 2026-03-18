@@ -4,7 +4,7 @@
 
 /*String help_menu = "\n=================================COMANDOS===================================\n"
                    "///HAZ CLICK EN EL BOTON CON EL NOMBRE DEL COMANDO PARA MANDAR LA ORDEN CON LA SIGUIENTE ESTRUCTURA QUE SE ENCUENTRA ABAJO///\n"
-                   "///                           1)  Do_sweep                               ///\n";
+                   "///                              1)  Do_sweep                               ///\n";
 */
 
 const int analogPin_base = A0;
@@ -17,7 +17,7 @@ const uint8_t pin_signal_colector = 5;
 uint8_t val = 0;
 uint8_t wait = 0;
 
-long sum = 0;          // variable to accumulate samples
+double sum = 0;          // variable to accumulate samples
 float Volt_base_avg = 0; 
 double Base_current = 0 ;
 float Voltage_CE_avg = 0;
@@ -27,7 +27,8 @@ const long _1M_res = 948000;
 const int _220_res = 214;
 
 const float max_volt = 3.3; // Maximo posible por medición del ADC
-const int max_dutty = 180;
+const int max_dutty = 173;
+const float ref_volt = 4.7;
 
 
 
@@ -54,7 +55,7 @@ void setup(){
   pinMode(pin_signal_base,OUTPUT);
   pinMode(pin_signal_colector,OUTPUT);
   
-  analogReference(EXTERNAL);
+  //analogReference(EXTERNAL);
 
   // Despues de inicializar todo imprimimos el menu de instrucciones
 }
@@ -149,43 +150,51 @@ void readDatatoSend(void){
 
 void Do_sweep(void){
 
-    for (uint8_t val_sig_base = 0 /*Recordar cambiar a un valor en donde a partir del dutty siguiente, cambie en el OPAM*/; val_sig_base <max_dutty; val_sig_base += 200/5){
+    for (uint8_t val_sig_base = 0 /*Recordar cambiar a un valor en donde a partir del dutty siguiente, cambie en el OPAM*/; val_sig_base <max_dutty; val_sig_base += int(max_dutty/5)){
 
+            sum = 0;
             // Primera medicion, medimos la corriente de base
+            analogWrite(pin_signal_base, val_sig_base);  // la señal en la base
 
             for (int i = 0; i < 100; i++) {
-              sum += analogRead(analogPin_base) * (3.3/1023);   // read ADC and accumulate
+              sum += analogRead(analogPin_base) * (4.7/1023);   // read ADC and accumulate
             }
 
             Volt_base_avg = sum / 100;
 
-            Base_current = ((5.0 * val_sig_base/255) - (Volt_base_avg))*1000000/_1M_res; // uA
+            Base_current = ((ref_volt * val_sig_base/255) - (Volt_base_avg))*1000000/_1M_res; // uA
 
             for (uint8_t val_sig_colector = 0; val_sig_colector < max_dutty; val_sig_colector++){
                 
                 sum = 0;
 
+                analogWrite(pin_signal_colector, val_sig_colector); // la señal en el colector
+
                 // Primera medicion, medimos la corriente de base
 
                 for (int i = 0; i < 100; i++) {
-                  sum += analogRead(analogPin_colector) * (3.3/1023);   // read ADC and accumulate
+                  sum += analogRead(analogPin_colector) * (4.7/1023);   // read ADC and accumulate
                 }
 
                 Voltage_CE_avg = sum / 100;
 
-                colector_Current = ((5.0 * val_sig_colector/255) - (Voltage_CE_avg))*1000/_220_res; //mA
+                colector_Current = ((ref_volt * val_sig_colector/255) - (Voltage_CE_avg))*1000/_220_res; //mA
 
-                Serial.print(Base_current); //uA
+                Serial.print(Volt_base_avg,5); //uA
                 Serial.print(" ");
-                Serial.print(Voltage_CE_avg); //V
+                Serial.print(Voltage_CE_avg,5); //V
                 Serial.print(" ");
-                Serial.print(colector_Current); //mA
-                Serial.print("||"); //mA
-                if (val_sig_colector == max_dutty){
-                  Serial.print("@");  
-                }
+                Serial.print(Base_current,5); //uA
+                Serial.print(" ");
+                Serial.print(Voltage_CE_avg,5); //V
+                Serial.print(" ");
+                Serial.println(colector_Current,5); //mA
+
+                delay(200);
           
             }
+
+            Serial.println("||");  
 
 
         }
