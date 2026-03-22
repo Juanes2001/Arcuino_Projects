@@ -156,6 +156,8 @@ void Do_sweep(void){
             // Primera medicion, medimos la corriente de base
             analogWrite(pin_signal_base, val_sig_base);  // la señal en la base
 
+            delay(80);
+
             for (int i = 0; i < 100; i++) {
               sum += analogRead(analogPin_base) * (4.7/1023);   // read ADC and accumulate
             }
@@ -169,6 +171,7 @@ void Do_sweep(void){
                 sum = 0;
 
                 analogWrite(pin_signal_colector, val_sig_colector); // la señal en el colector
+                delay(100);
 
                 // Primera medicion, medimos la corriente de base
 
@@ -180,18 +183,12 @@ void Do_sweep(void){
 
                 colector_Current = ((ref_volt * val_sig_colector/255) - (Voltage_CE_avg))*1000/_220_res; //mA
 
-                Serial.print(Volt_base_avg,5); //uA
-                Serial.print(" ");
-                Serial.print(Voltage_CE_avg,5); //V
-                Serial.print(" ");
+
                 Serial.print(Base_current,5); //uA
                 Serial.print(" ");
                 Serial.print(Voltage_CE_avg,5); //V
                 Serial.print(" ");
-                Serial.println(colector_Current,5); //mA
-
-                delay(200);
-          
+                Serial.println(colector_Current,5); //mA          
             }
 
             Serial.println("||");  
