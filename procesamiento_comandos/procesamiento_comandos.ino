@@ -24,11 +24,12 @@ float Voltage_CE_avg = 0;
 double colector_Current = 0; 
 
 const long _1M_res = 948000;
-const int _220_res = 214;
+const int _1k_res = 992;
 
 const float max_volt = 3.3; // Maximo posible por medición del ADC
-const int max_dutty = 173;
+const int max_dutty = 175;
 const float ref_volt = 4.7;
+const int min_dutty_base = 30;
 
 
 
@@ -150,7 +151,7 @@ void readDatatoSend(void){
 
 void Do_sweep(void){
 
-    for (uint8_t val_sig_base = 0 /*Recordar cambiar a un valor en donde a partir del dutty siguiente, cambie en el OPAM*/; val_sig_base <max_dutty; val_sig_base += int(max_dutty/5)){
+    for (uint8_t val_sig_base = min_dutty_base /*Recordar cambiar a un valor en donde a partir del dutty siguiente, cambie en el OPAM*/; val_sig_base <max_dutty; val_sig_base += int((max_dutty-min_dutty_base)/5)){
 
             sum = 0;
             // Primera medicion, medimos la corriente de base
@@ -166,7 +167,7 @@ void Do_sweep(void){
 
             Base_current = ((ref_volt * val_sig_base/255) - (Volt_base_avg))*1000000/_1M_res; // uA
 
-            for (uint8_t val_sig_colector = 0; val_sig_colector < max_dutty; val_sig_colector++){
+            for (uint8_t val_sig_colector = 0 ; val_sig_colector < max_dutty; val_sig_colector++){
                 
                 sum = 0;
 
@@ -181,7 +182,7 @@ void Do_sweep(void){
 
                 Voltage_CE_avg = sum / 100;
 
-                colector_Current = ((ref_volt * val_sig_colector/255) - (Voltage_CE_avg))*1000/_220_res; //mA
+                colector_Current = ((ref_volt * val_sig_colector/255) - (Voltage_CE_avg))*1000/_1k_res; //mA
 
 
                 Serial.print(Base_current,5); //uA
